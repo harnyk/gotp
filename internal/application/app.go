@@ -10,7 +10,7 @@ import (
 	"github.com/harnyk/gotp/internal/storage"
 	"github.com/hgfischer/go-otp"
 	"github.com/manifoldco/promptui"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type App struct {
@@ -42,7 +42,7 @@ func (a *App) CmdList() {
 
 func (a *App) CmdAdd(key string) {
 	fmt.Print("Enter secret: ")
-	secret, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	secret, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
 	}
