@@ -10,7 +10,7 @@ import (
 	"github.com/harnyk/gotp/internal/storage"
 	"github.com/hgfischer/go-otp"
 	"github.com/manifoldco/promptui"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type App struct {
@@ -42,7 +42,7 @@ func (a *App) CmdList() {
 
 func (a *App) CmdAdd(key string) {
 	fmt.Print("Enter secret: ")
-	secret, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	secret, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
 	}
@@ -71,16 +71,31 @@ func (a *App) CmdGenerate(key string) {
 
 //------------------------------------------------------------------------------
 
-func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan string {
-	ch := make(chan string)
+type codeWithTime struct {
+	code string
+	time uint8
+}
+
+func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan codeWithTime {
+	ch := make(chan codeWithTime)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				ch <- totp.Now().Get()
-				time.Sleep(time.Duration(1) * time.Second)
+				{
+					nowTime := time.Now()
+					totp.Time = nowTime
+					ts := uint64(nowTime.Unix() / int64(totp.Period))
+					timeOfPeriodStart := time.Unix(int64(ts)*int64(totp.Period), 0)
+					timeOfPeriodEnd := timeOfPeriodStart.Add(
+						time.Duration(
+							uint64(totp.Period) * uint64(time.Second)))
+					timeToNextPeriod := timeOfPeriodEnd.Sub(nowTime) / time.Second
+					ch <- codeWithTime{totp.Get(), uint8(timeToNextPeriod)}
+					time.Sleep(time.Duration(1) * time.Second)
+				}
 			}
 		}
 	}()
@@ -91,6 +106,7 @@ func showCode(secret string) {
 	totp := &otp.TOTP{
 		Secret:         secret,
 		IsBase32Secret: true,
+		Period:         30,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -115,8 +131,14 @@ func showCode(secret string) {
 				return
 			}
 		case code := <-ch:
-			fmt.Print(code)
 			fmt.Print("\r")
+			fmt.Printf(
+				"%s %s    ",
+				promptui.Styler(promptui.FGBold)(code.code),
+				promptui.Styler(promptui.FGFaint)(
+					fmt.Sprintf("(%ds)", code.time),
+				),
+			)
 		}
 	}
 }
