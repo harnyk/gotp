@@ -71,16 +71,29 @@ func (a *App) CmdGenerate(key string) {
 
 //------------------------------------------------------------------------------
 
-func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan string {
-	ch := make(chan string)
+type codeWithTime struct {
+	code string
+	time time.Duration
+}
+
+func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan codeWithTime {
+	ch := make(chan codeWithTime)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				ch <- totp.Now().Get()
-				time.Sleep(time.Duration(1) * time.Second)
+				{
+					nowTime := time.Now()
+					totp.Time = nowTime
+					ts := uint64(nowTime.Unix() / int64(totp.Period))
+					timeOfPeriodStart := time.Unix(int64(ts)*int64(totp.Period), 0)
+					timeOfPeriodEnd := timeOfPeriodStart.Add(time.Duration(totp.Period))
+					timeToNextPeriod := timeOfPeriodEnd.Sub(nowTime)
+					ch <- codeWithTime{totp.Get(), timeToNextPeriod}
+					time.Sleep(time.Duration(1) * time.Second)
+				}
 			}
 		}
 	}()
