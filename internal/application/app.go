@@ -35,6 +35,10 @@ func (a *App) CmdList() {
 	}
 	_, result, err := prompt.Run()
 	if err != nil {
+		if err == promptui.ErrInterrupt {
+			fmt.Println("Interrupted")
+			return
+		}
 		panic(err)
 	}
 	a.CmdGenerate(result)
@@ -126,7 +130,7 @@ func showCode(secret string) {
 			if ev.Key == keyboard.KeyEsc ||
 				ev.Key == keyboard.KeyCtrlC ||
 				ev.Rune == 'q' {
-				fmt.Println("Canceled")
+				fmt.Println()
 				cancel()
 				return
 			}
