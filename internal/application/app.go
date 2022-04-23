@@ -89,8 +89,10 @@ func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan codeWithTime {
 					totp.Time = nowTime
 					ts := uint64(nowTime.Unix() / int64(totp.Period))
 					timeOfPeriodStart := time.Unix(int64(ts)*int64(totp.Period), 0)
-					timeOfPeriodEnd := timeOfPeriodStart.Add(time.Duration(totp.Period))
-					timeToNextPeriod := timeOfPeriodEnd.Sub(nowTime)
+					timeOfPeriodEnd := timeOfPeriodStart.Add(
+						time.Duration(
+							uint64(totp.Period) * uint64(time.Second)))
+					timeToNextPeriod := timeOfPeriodEnd.Sub(nowTime) / time.Second
 					ch <- codeWithTime{totp.Get(), timeToNextPeriod}
 					time.Sleep(time.Duration(1) * time.Second)
 				}
@@ -104,6 +106,7 @@ func showCode(secret string) {
 	totp := &otp.TOTP{
 		Secret:         secret,
 		IsBase32Secret: true,
+		Period:         30,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
