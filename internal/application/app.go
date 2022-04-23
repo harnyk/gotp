@@ -73,7 +73,7 @@ func (a *App) CmdGenerate(key string) {
 
 type codeWithTime struct {
 	code string
-	time time.Duration
+	time uint8
 }
 
 func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan codeWithTime {
@@ -93,7 +93,7 @@ func getTickingChannel(ctx context.Context, totp *otp.TOTP) chan codeWithTime {
 						time.Duration(
 							uint64(totp.Period) * uint64(time.Second)))
 					timeToNextPeriod := timeOfPeriodEnd.Sub(nowTime) / time.Second
-					ch <- codeWithTime{totp.Get(), timeToNextPeriod}
+					ch <- codeWithTime{totp.Get(), uint8(timeToNextPeriod)}
 					time.Sleep(time.Duration(1) * time.Second)
 				}
 			}
@@ -131,8 +131,14 @@ func showCode(secret string) {
 				return
 			}
 		case code := <-ch:
-			fmt.Print(code)
 			fmt.Print("\r")
+			fmt.Printf(
+				"%s %s    ",
+				promptui.Styler(promptui.FGBold)(code.code),
+				promptui.Styler(promptui.FGFaint)(
+					fmt.Sprintf("(%ds)", code.time),
+				),
+			)
 		}
 	}
 }
