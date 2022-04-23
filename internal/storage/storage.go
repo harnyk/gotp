@@ -13,7 +13,7 @@ type ISecretsRepository interface {
 	GetSecret(id string) (string, error)
 	SetSecret(id string, secret string) error
 	DeleteSecret(id string) error
-	ListSecrets() ([]string, error)
+	ListKeys() ([]string, error)
 }
 
 type SecretsRepository struct {
@@ -30,6 +30,10 @@ func NewSecretsRepository() *SecretsRepository {
 }
 
 func (s *SecretsRepository) loadSecrets() (tree *toml.Tree, err error) {
+	_, err = os.Stat(s.filePath)
+	if os.IsNotExist(err) {
+		return toml.TreeFromMap(map[string]interface{}{})
+	}
 	secrets, err := toml.LoadFile(s.filePath)
 	return secrets, err
 }
@@ -78,7 +82,7 @@ func (s *SecretsRepository) DeleteSecret(id string) error {
 	return s.saveSecrets(secrets)
 }
 
-func (s *SecretsRepository) ListSecrets() ([]string, error) {
+func (s *SecretsRepository) ListKeys() ([]string, error) {
 	secrets, err := s.loadSecrets()
 	if err != nil {
 		return nil, err
