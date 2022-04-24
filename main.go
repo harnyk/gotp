@@ -63,7 +63,7 @@ func main() {
 			Aliases: []string{"rm", "remove", "del", "d"},
 			Args:    cobra.ExactArgs(1),
 			Run: func(cmd *cobra.Command, args []string) {
-				fmt.Println("Deleting secret")
+				app.CmdDelete(args[0])
 			},
 		},
 	)
